@@ -34,20 +34,19 @@ function canResolveBuildDependencies() {
 
 async function runNpmInstallDevDependencies() {
 	const npmExecPath = process.env.npm_execpath;
-	const options = process.platform === "win32" ? { shell: true } : {};
-	if (npmExecPath) {
-		await execFile(process.execPath, [npmExecPath, "install", "--include=dev", "--ignore-scripts"], {
-			...options,
-			cwd: process.cwd(),
-			maxBuffer: 20 * 1024 * 1024,
-		});
-		return;
-	}
-	await execFile("npm", ["install", "--include=dev", "--ignore-scripts"], {
-		...options,
+	// Do not spawn through cmd. On Windows, cmd splits `C:\Program Files\nodejs\node.exe`
+	// at the space and prepare fails with `"C:\Program" is not recognized`.
+	const options = {
 		cwd: process.cwd(),
 		maxBuffer: 20 * 1024 * 1024,
-	});
+		windowsHide: true,
+	};
+	if (npmExecPath) {
+		await execFile(process.execPath, [npmExecPath, "install", "--include=dev", "--ignore-scripts"], options);
+		return;
+	}
+	const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
+	await execFile(npmBin, ["install", "--include=dev", "--ignore-scripts"], options);
 }
 
 async function main() {
